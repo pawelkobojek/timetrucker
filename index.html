@@ -1,0 +1,1098 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Time Tracker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&display=swap" rel="stylesheet" />
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script src="https://apis.google.com/js/api.js" async defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+  <style>
+    /* ── Reset & Base ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #FAF7F2;
+      --bg-card: #FFFFFF;
+      --text: #2C2520;
+      --text-soft: #7A6F68;
+      --accent: #B8653A;
+      --accent-hover: #9E5530;
+      --accent-light: #F3E8E0;
+      --border: #E8E0D8;
+      --danger: #C44B4B;
+      --danger-hover: #A83C3C;
+      --success: #4A8B6E;
+      --radius: 10px;
+      --shadow: 0 1px 3px rgba(44,37,32,0.06), 0 4px 12px rgba(44,37,32,0.04);
+      --shadow-lg: 0 4px 12px rgba(44,37,32,0.08), 0 12px 32px rgba(44,37,32,0.06);
+    }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    h1, h2, h3 { font-family: 'Fraunces', serif; font-weight: 600; line-height: 1.2; }
+
+    /* ── Layout ── */
+    .container { max-width: 900px; margin: 0 auto; padding: 24px 20px; }
+
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 0; margin-bottom: 32px; border-bottom: 1px solid var(--border);
+    }
+    header h1 { font-size: 1.5rem; color: var(--accent); }
+    .user-info { display: flex; align-items: center; gap: 12px; font-size: 0.9rem; color: var(--text-soft); }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 10px 20px; border: none; border-radius: var(--radius);
+      font-family: 'DM Sans', sans-serif; font-size: 0.9rem; font-weight: 600;
+      cursor: pointer; transition: all 0.15s ease;
+    }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { background: var(--accent-hover); transform: translateY(-1px); box-shadow: var(--shadow); }
+    .btn-secondary { background: var(--accent-light); color: var(--accent); }
+    .btn-secondary:hover { background: #EBDAD0; }
+    .btn-danger { background: #F9EDED; color: var(--danger); }
+    .btn-danger:hover { background: #F0D5D5; }
+    .btn-ghost { background: transparent; color: var(--text-soft); padding: 8px 12px; }
+    .btn-ghost:hover { background: var(--accent-light); color: var(--accent); }
+    .btn-sm { padding: 6px 14px; font-size: 0.82rem; }
+    .btn-lg { padding: 14px 32px; font-size: 1rem; }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--bg-card); border-radius: var(--radius);
+      box-shadow: var(--shadow); border: 1px solid var(--border);
+      padding: 24px; margin-bottom: 20px;
+    }
+
+    /* ── Forms ── */
+    .form-group { margin-bottom: 16px; }
+    .form-group label {
+      display: block; font-size: 0.82rem; font-weight: 600;
+      color: var(--text-soft); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.04em;
+    }
+    .form-input {
+      width: 100%; padding: 10px 14px; border: 1.5px solid var(--border);
+      border-radius: 8px; font-family: 'DM Sans', sans-serif; font-size: 0.95rem;
+      color: var(--text); background: var(--bg); transition: border-color 0.15s;
+    }
+    .form-input:focus { outline: none; border-color: var(--accent); }
+    select.form-input { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%237A6F68' d='M6 8L1 3h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; padding-right: 36px; }
+
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media (max-width: 600px) { .form-row { grid-template-columns: 1fr; } }
+
+    /* ── Table ── */
+    .table-wrapper { overflow-x: auto; margin: 0 -24px; padding: 0 24px; }
+    table { width: 100%; border-collapse: collapse; }
+    th {
+      text-align: left; padding: 10px 14px; font-size: 0.78rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-soft);
+      border-bottom: 2px solid var(--border);
+    }
+    td {
+      padding: 12px 14px; border-bottom: 1px solid var(--border);
+      font-size: 0.92rem; vertical-align: middle;
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(184,101,58,0.02); }
+
+    .tag {
+      display: inline-block; padding: 3px 10px; border-radius: 20px;
+      font-size: 0.78rem; font-weight: 600; background: var(--accent-light); color: var(--accent);
+    }
+
+    /* ── Toolbar ── */
+    .toolbar {
+      display: flex; align-items: center; gap: 12px;
+      flex-wrap: wrap; margin-bottom: 20px;
+    }
+    .toolbar .form-input { width: auto; min-width: 150px; }
+    .toolbar-spacer { flex: 1; }
+
+    /* ── Modal ── */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(44,37,32,0.3);
+      display: none; align-items: center; justify-content: center;
+      z-index: 100; backdrop-filter: blur(2px); padding: 20px;
+    }
+    .modal-overlay.active { display: flex; }
+    .modal {
+      background: var(--bg-card); border-radius: 14px; box-shadow: var(--shadow-lg);
+      width: 100%; max-width: 500px; padding: 28px; position: relative;
+      max-height: 90vh; overflow-y: auto;
+    }
+    .modal h2 { margin-bottom: 20px; font-size: 1.25rem; }
+    .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 24px; }
+
+    /* ── Login Screen ── */
+    .login-screen {
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; min-height: 80vh; text-align: center;
+    }
+    .login-screen h1 { font-size: 2.2rem; margin-bottom: 8px; color: var(--text); }
+    .login-screen p { color: var(--text-soft); margin-bottom: 32px; font-size: 1.05rem; }
+    .google-btn {
+      display: inline-flex; align-items: center; gap: 12px;
+      padding: 14px 28px; background: #fff; border: 2px solid var(--border);
+      border-radius: var(--radius); font-family: 'DM Sans', sans-serif;
+      font-size: 1rem; font-weight: 600; color: var(--text); cursor: pointer;
+      transition: all 0.15s; box-shadow: var(--shadow);
+    }
+    .google-btn:hover { border-color: var(--accent); box-shadow: var(--shadow-lg); transform: translateY(-1px); }
+    .google-btn svg { width: 20px; height: 20px; }
+
+    /* ── Empty State ── */
+    .empty-state {
+      text-align: center; padding: 48px 20px; color: var(--text-soft);
+    }
+    .empty-state p { margin-bottom: 16px; }
+
+    /* ── Loading ── */
+    .loading { text-align: center; padding: 40px; color: var(--text-soft); }
+    .spinner {
+      display: inline-block; width: 24px; height: 24px;
+      border: 3px solid var(--border); border-top-color: var(--accent);
+      border-radius: 50%; animation: spin 0.6s linear infinite; margin-bottom: 12px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Misc ── */
+    .section-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 16px;
+    }
+    .section-header h2 { font-size: 1.15rem; }
+    .text-right { text-align: right; }
+    .text-soft { color: var(--text-soft); }
+    .text-sm { font-size: 0.85rem; }
+    .mt-4 { margin-top: 16px; }
+    .mb-4 { margin-bottom: 16px; }
+    .hidden { display: none !important; }
+
+    .client-list-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 0; border-bottom: 1px solid var(--border);
+    }
+    .client-list-item:last-child { border-bottom: none; }
+
+    .stats-bar {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 16px; margin-bottom: 24px;
+    }
+    .stat-item { text-align: center; padding: 16px; background: var(--bg); border-radius: var(--radius); }
+    .stat-value { font-family: 'Fraunces', serif; font-size: 1.5rem; font-weight: 700; color: var(--accent); }
+    .stat-label { font-size: 0.78rem; color: var(--text-soft); text-transform: uppercase; letter-spacing: 0.04em; margin-top: 2px; }
+
+    .delete-btn {
+      background: none; border: none; color: var(--text-soft); cursor: pointer;
+      padding: 4px 8px; border-radius: 6px; font-size: 1.1rem; line-height: 1;
+    }
+    .delete-btn:hover { background: #F9EDED; color: var(--danger); }
+
+    .notice {
+      background: #FEF7EC; border: 1px solid #F0DFC0; border-radius: var(--radius);
+      padding: 14px 18px; font-size: 0.88rem; color: #8B6914; margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════ LOGIN SCREEN ═══════════════ -->
+<div id="login-screen" class="login-screen">
+  <h1>Time Tracker</h1>
+  <p>Simple time tracking with Google Sheets</p>
+  <button class="google-btn" onclick="handleSignIn()">
+    <svg viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+    Sign in with Google
+  </button>
+  <p class="text-sm text-soft mt-4">Your data is stored in your own Google Sheet</p>
+</div>
+
+<!-- ═══════════════ MAIN APP ═══════════════ -->
+<div id="app" class="hidden">
+  <div class="container">
+    <header>
+      <h1>⏱ Time Tracker</h1>
+      <div class="user-info">
+        <span id="user-name"></span>
+        <button class="btn btn-ghost btn-sm" onclick="handleSignOut()">Sign out</button>
+      </div>
+    </header>
+
+    <!-- Stats -->
+    <div class="stats-bar" id="stats-bar">
+      <div class="stat-item">
+        <div class="stat-value" id="stat-month-hours">0</div>
+        <div class="stat-label">Hours this month</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value" id="stat-total-entries">0</div>
+        <div class="stat-label">Total entries</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value" id="stat-clients">0</div>
+        <div class="stat-label">Clients</div>
+      </div>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="toolbar">
+      <button class="btn btn-primary" onclick="openAddEntry()">+ Add Entry</button>
+      <button class="btn btn-secondary" onclick="openManageClients()">Clients</button>
+      <div class="toolbar-spacer"></div>
+      <select class="form-input" id="filter-client" onchange="renderEntries()">
+        <option value="">All clients</option>
+      </select>
+      <input type="month" class="form-input" id="filter-month" onchange="renderEntries()" />
+      <button class="btn btn-secondary" onclick="openGenerateReport()">📄 PDF Report</button>
+    </div>
+
+    <!-- Entries Table -->
+    <div class="card">
+      <div id="entries-loading" class="loading">
+        <div class="spinner"></div>
+        <p>Loading entries…</p>
+      </div>
+      <div id="entries-table-wrapper" class="hidden">
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Client</th>
+                <th>Description</th>
+                <th class="text-right">Hours</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="entries-body"></tbody>
+          </table>
+        </div>
+        <div id="entries-empty" class="empty-state hidden">
+          <p>No entries yet. Click <strong>"+ Add Entry"</strong> to start tracking time.</p>
+        </div>
+        <div id="entries-total" class="text-right text-soft text-sm mt-4"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ MODAL: ADD/EDIT ENTRY ═══════════════ -->
+<div class="modal-overlay" id="modal-entry">
+  <div class="modal">
+    <h2 id="entry-modal-title">Add Entry</h2>
+    <input type="hidden" id="entry-edit-row" />
+    <div class="form-row">
+      <div class="form-group">
+        <label>Date</label>
+        <input type="date" class="form-input" id="entry-date" />
+      </div>
+      <div class="form-group">
+        <label>Client</label>
+        <select class="form-input" id="entry-client">
+          <option value="">Select client…</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Description</label>
+      <input type="text" class="form-input" id="entry-desc" placeholder="What did you work on?" />
+    </div>
+    <div class="form-group">
+      <label>Hours</label>
+      <input type="number" class="form-input" id="entry-hours" step="0.25" min="0" placeholder="e.g. 2.5" />
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-entry')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEntry()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ MODAL: MANAGE CLIENTS ═══════════════ -->
+<div class="modal-overlay" id="modal-clients">
+  <div class="modal">
+    <h2>Manage Clients</h2>
+    <div style="display:flex;gap:8px;margin-bottom:16px;">
+      <input type="text" class="form-input" id="new-client-name" placeholder="New client name" onkeydown="if(event.key==='Enter')addClient()" />
+      <button class="btn btn-primary" onclick="addClient()">Add</button>
+    </div>
+    <div id="clients-list"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-clients')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ MODAL: GENERATE REPORT ═══════════════ -->
+<div class="modal-overlay" id="modal-report">
+  <div class="modal">
+    <h2>Generate PDF Report</h2>
+    <div class="form-group">
+      <label>Client</label>
+      <select class="form-input" id="report-client">
+        <option value="">Select client…</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>From</label>
+        <input type="date" class="form-input" id="report-from" />
+      </div>
+      <div class="form-group">
+        <label>To</label>
+        <input type="date" class="form-input" id="report-to" />
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Your name / business (shown on report)</label>
+      <input type="text" class="form-input" id="report-author" placeholder="e.g. Anna Kowalska" />
+    </div>
+    <div class="form-group">
+      <label>Language / Język</label>
+      <select class="form-input" id="report-lang">
+        <option value="pl" selected>Polski</option>
+        <option value="en">English</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-report')">Cancel</button>
+      <button class="btn btn-primary" onclick="generateReport()">📄 Generate PDF</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════
+//  CONFIGURATION
+// ══════════════════════════════════════════════════════
+const CONFIG = {
+  CLIENT_ID: '429543199065-r5eg3nsh19rva30ldtvfdqfv9i4j7pnt.apps.googleusercontent.com',
+  SCOPES: 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.profile',
+  SPREADSHEET_NAME: 'Time Tracker Data',
+};
+
+// ══════════════════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════════════════
+let state = {
+  accessToken: null,
+  spreadsheetId: null,
+  user: null,
+  clients: [],   // [{name: "..."}]
+  entries: [],    // [{date, client, description, hours}]
+};
+
+// ══════════════════════════════════════════════════════
+//  GOOGLE AUTH
+// ══════════════════════════════════════════════════════
+let tokenClient;
+
+function initAuth() {
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: CONFIG.CLIENT_ID,
+    scope: CONFIG.SCOPES,
+    callback: onTokenResponse,
+  });
+}
+
+function handleSignIn() {
+  tokenClient.requestAccessToken();
+}
+
+function handleSignOut() {
+  state.accessToken = null;
+  state.spreadsheetId = null;
+  google.accounts.oauth2.revoke(state.accessToken);
+  document.getElementById('app').classList.add('hidden');
+  document.getElementById('login-screen').classList.remove('hidden');
+}
+
+function onTokenResponse(response) {
+  if (response.error) { console.error(response); return; }
+  state.accessToken = response.access_token;
+  fetchUserInfo().then(() => {
+    document.getElementById('login-screen').classList.add('hidden');
+    document.getElementById('app').classList.remove('hidden');
+    initSpreadsheet();
+  });
+}
+
+async function fetchUserInfo() {
+  const res = await gFetch('https://www.googleapis.com/oauth2/v2/userinfo');
+  state.user = res;
+  document.getElementById('user-name').textContent = res.name || res.email;
+  // Pre-fill report author
+  const authorInput = document.getElementById('report-author');
+  if (!authorInput.value) authorInput.value = res.name || '';
+}
+
+// ══════════════════════════════════════════════════════
+//  GOOGLE SHEETS API HELPERS
+// ══════════════════════════════════════════════════════
+async function gFetch(url, options = {}) {
+  const res = await fetch(url, {
+    ...options,
+    headers: {
+      'Authorization': `Bearer ${state.accessToken}`,
+      'Content-Type': 'application/json',
+      ...(options.headers || {}),
+    },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(`API error ${res.status}: ${JSON.stringify(err)}`);
+  }
+  return res.json();
+}
+
+async function findSpreadsheet() {
+  const query = encodeURIComponent(`name='${CONFIG.SPREADSHEET_NAME}' and mimeType='application/vnd.google-apps.spreadsheet' and trashed=false`);
+  const res = await gFetch(`https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name)`);
+  return res.files && res.files.length > 0 ? res.files[0].id : null;
+}
+
+async function createSpreadsheet() {
+  const res = await gFetch('https://sheets.googleapis.com/v4/spreadsheets', {
+    method: 'POST',
+    body: JSON.stringify({
+      properties: { title: CONFIG.SPREADSHEET_NAME },
+      sheets: [
+        {
+          properties: { title: 'Clients', index: 0 },
+          data: [{ rowData: [{ values: [{ userEnteredValue: { stringValue: 'name' } }] }] }],
+        },
+        {
+          properties: { title: 'Entries', index: 1 },
+          data: [{
+            rowData: [{
+              values: [
+                { userEnteredValue: { stringValue: 'date' } },
+                { userEnteredValue: { stringValue: 'client' } },
+                { userEnteredValue: { stringValue: 'description' } },
+                { userEnteredValue: { stringValue: 'hours' } },
+              ],
+            }],
+          }],
+        },
+      ],
+    }),
+  });
+  return res.spreadsheetId;
+}
+
+async function readSheet(sheet) {
+  const res = await gFetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${state.spreadsheetId}/values/${encodeURIComponent(sheet)}`
+  );
+  return res.values || [];
+}
+
+async function appendRow(sheet, values) {
+  await gFetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${state.spreadsheetId}/values/${encodeURIComponent(sheet)}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,
+    { method: 'POST', body: JSON.stringify({ values: [values] }) }
+  );
+}
+
+async function deleteRow(sheet, rowIndex) {
+  // Get sheet ID
+  const meta = await gFetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${state.spreadsheetId}?fields=sheets.properties`
+  );
+  const sheetObj = meta.sheets.find(s => s.properties.title === sheet);
+  if (!sheetObj) return;
+
+  await gFetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${state.spreadsheetId}:batchUpdate`,
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        requests: [{
+          deleteDimension: {
+            range: {
+              sheetId: sheetObj.properties.sheetId,
+              dimension: 'ROWS',
+              startIndex: rowIndex,
+              endIndex: rowIndex + 1,
+            },
+          },
+        }],
+      }),
+    }
+  );
+}
+
+async function updateRow(sheet, rowIndex, values) {
+  const range = `${sheet}!A${rowIndex + 1}`;
+  await gFetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${state.spreadsheetId}/values/${encodeURIComponent(range)}?valueInputOption=RAW`,
+    { method: 'PUT', body: JSON.stringify({ values: [values] }) }
+  );
+}
+
+// ══════════════════════════════════════════════════════
+//  INIT & DATA LOADING
+// ══════════════════════════════════════════════════════
+async function initSpreadsheet() {
+  try {
+    let id = await findSpreadsheet();
+    if (!id) id = await createSpreadsheet();
+    state.spreadsheetId = id;
+    await loadAllData();
+  } catch (err) {
+    console.error('Init error:', err);
+    alert('Error initializing spreadsheet. Check console for details.');
+  }
+}
+
+async function loadAllData() {
+  const [clientRows, entryRows] = await Promise.all([
+    readSheet('Clients'),
+    readSheet('Entries'),
+  ]);
+
+  // Skip header row
+  state.clients = clientRows.slice(1).map(r => ({ name: r[0] || '' })).filter(c => c.name);
+  state.entries = entryRows.slice(1).map(r => ({
+    date: r[0] || '',
+    client: r[1] || '',
+    description: r[2] || '',
+    hours: parseFloat(r[3]) || 0,
+  }));
+
+  // Sort entries by date descending
+  state.entries.sort((a, b) => b.date.localeCompare(a.date));
+
+  populateClientDropdowns();
+  renderEntries();
+  updateStats();
+
+  document.getElementById('entries-loading').classList.add('hidden');
+  document.getElementById('entries-table-wrapper').classList.remove('hidden');
+}
+
+// ══════════════════════════════════════════════════════
+//  CLIENT MANAGEMENT
+// ══════════════════════════════════════════════════════
+function populateClientDropdowns() {
+  const dropdowns = ['filter-client', 'entry-client', 'report-client'];
+  dropdowns.forEach(id => {
+    const el = document.getElementById(id);
+    const currentVal = el.value;
+    const firstOption = el.querySelector('option');
+    el.innerHTML = '';
+    el.appendChild(firstOption);
+    state.clients.forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c.name;
+      opt.textContent = c.name;
+      el.appendChild(opt);
+    });
+    el.value = currentVal;
+  });
+}
+
+function openManageClients() {
+  renderClientsList();
+  openModal('modal-clients');
+}
+
+function renderClientsList() {
+  const list = document.getElementById('clients-list');
+  if (state.clients.length === 0) {
+    list.innerHTML = '<p class="text-soft text-sm">No clients yet. Add one above.</p>';
+    return;
+  }
+  list.innerHTML = state.clients.map((c, i) => `
+    <div class="client-list-item">
+      <span>${esc(c.name)}</span>
+      <button class="delete-btn" onclick="removeClient(${i})" title="Remove">✕</button>
+    </div>
+  `).join('');
+}
+
+async function addClient() {
+  const input = document.getElementById('new-client-name');
+  const name = input.value.trim();
+  if (!name) return;
+  if (state.clients.some(c => c.name.toLowerCase() === name.toLowerCase())) {
+    alert('Client already exists.');
+    return;
+  }
+
+  try {
+    await appendRow('Clients', [name]);
+    state.clients.push({ name });
+    input.value = '';
+    renderClientsList();
+    populateClientDropdowns();
+    updateStats();
+  } catch (err) {
+    console.error(err);
+    alert('Error adding client.');
+  }
+}
+
+async function removeClient(index) {
+  const client = state.clients[index];
+  if (!confirm(`Remove client "${client.name}"? Existing entries will keep the client name.`)) return;
+
+  try {
+    await deleteRow('Clients', index + 1); // +1 for header
+    state.clients.splice(index, 1);
+    renderClientsList();
+    populateClientDropdowns();
+    updateStats();
+  } catch (err) {
+    console.error(err);
+    alert('Error removing client.');
+  }
+}
+
+// ══════════════════════════════════════════════════════
+//  ENTRY MANAGEMENT
+// ══════════════════════════════════════════════════════
+function openAddEntry() {
+  document.getElementById('entry-modal-title').textContent = 'Add Entry';
+  document.getElementById('entry-edit-row').value = '';
+  document.getElementById('entry-date').value = new Date().toISOString().slice(0, 10);
+  document.getElementById('entry-client').value = '';
+  document.getElementById('entry-desc').value = '';
+  document.getElementById('entry-hours').value = '';
+  openModal('modal-entry');
+}
+
+function openEditEntry(localIndex) {
+  const filtered = getFilteredEntries();
+  const entry = filtered[localIndex];
+  if (!entry) return;
+
+  document.getElementById('entry-modal-title').textContent = 'Edit Entry';
+  // Find real index in state.entries
+  const realIndex = state.entries.indexOf(entry);
+  document.getElementById('entry-edit-row').value = realIndex;
+  document.getElementById('entry-date').value = entry.date;
+  document.getElementById('entry-client').value = entry.client;
+  document.getElementById('entry-desc').value = entry.description;
+  document.getElementById('entry-hours').value = entry.hours;
+  openModal('modal-entry');
+}
+
+async function saveEntry() {
+  const date = document.getElementById('entry-date').value;
+  const client = document.getElementById('entry-client').value;
+  const desc = document.getElementById('entry-desc').value.trim();
+  const hours = parseFloat(document.getElementById('entry-hours').value);
+
+  if (!date || !client || !hours) {
+    alert('Please fill in date, client, and hours.');
+    return;
+  }
+
+  const editRow = document.getElementById('entry-edit-row').value;
+  const entry = { date, client, description: desc, hours };
+  const rowValues = [date, client, desc, hours.toString()];
+
+  try {
+    if (editRow !== '') {
+      // Editing existing
+      const realIndex = parseInt(editRow);
+      // Find this entry's row in the sheet
+      // Entries in the sheet are in insertion order; state.entries is sorted.
+      // We need to find the sheet row. Reload entries to get accurate row mapping.
+      const entryRows = await readSheet('Entries');
+      const old = state.entries[realIndex];
+      // Find matching row in sheet (skip header at index 0)
+      let sheetRow = -1;
+      for (let i = 1; i < entryRows.length; i++) {
+        const r = entryRows[i];
+        if (r[0] === old.date && r[1] === old.client && r[2] === (old.description || '') && parseFloat(r[3]) === old.hours) {
+          sheetRow = i;
+          break;
+        }
+      }
+      if (sheetRow === -1) {
+        alert('Could not find entry to update. Try refreshing.');
+        return;
+      }
+      await updateRow('Entries', sheetRow, rowValues);
+      state.entries[realIndex] = entry;
+    } else {
+      // New entry
+      await appendRow('Entries', rowValues);
+      state.entries.push(entry);
+    }
+
+    state.entries.sort((a, b) => b.date.localeCompare(a.date));
+    renderEntries();
+    updateStats();
+    closeModal('modal-entry');
+  } catch (err) {
+    console.error(err);
+    alert('Error saving entry.');
+  }
+}
+
+async function deleteEntry(localIndex) {
+  const filtered = getFilteredEntries();
+  const entry = filtered[localIndex];
+  if (!entry) return;
+  if (!confirm('Delete this entry?')) return;
+
+  try {
+    const entryRows = await readSheet('Entries');
+    let sheetRow = -1;
+    for (let i = 1; i < entryRows.length; i++) {
+      const r = entryRows[i];
+      if (r[0] === entry.date && r[1] === entry.client && r[2] === (entry.description || '') && parseFloat(r[3]) === entry.hours) {
+        sheetRow = i;
+        break;
+      }
+    }
+    if (sheetRow === -1) {
+      alert('Could not find entry. Try refreshing.');
+      return;
+    }
+
+    await deleteRow('Entries', sheetRow);
+    const realIndex = state.entries.indexOf(entry);
+    state.entries.splice(realIndex, 1);
+    renderEntries();
+    updateStats();
+  } catch (err) {
+    console.error(err);
+    alert('Error deleting entry.');
+  }
+}
+
+// ══════════════════════════════════════════════════════
+//  FILTERING & RENDERING
+// ══════════════════════════════════════════════════════
+function getFilteredEntries() {
+  const clientFilter = document.getElementById('filter-client').value;
+  const monthFilter = document.getElementById('filter-month').value; // "YYYY-MM"
+
+  return state.entries.filter(e => {
+    if (clientFilter && e.client !== clientFilter) return false;
+    if (monthFilter && !e.date.startsWith(monthFilter)) return false;
+    return true;
+  });
+}
+
+function renderEntries() {
+  const filtered = getFilteredEntries();
+  const tbody = document.getElementById('entries-body');
+  const empty = document.getElementById('entries-empty');
+  const total = document.getElementById('entries-total');
+
+  if (filtered.length === 0) {
+    tbody.innerHTML = '';
+    empty.classList.remove('hidden');
+    total.textContent = '';
+    return;
+  }
+
+  empty.classList.add('hidden');
+  const totalHours = filtered.reduce((s, e) => s + e.hours, 0);
+
+  tbody.innerHTML = filtered.map((e, i) => `
+    <tr>
+      <td>${formatDate(e.date)}</td>
+      <td><span class="tag">${esc(e.client)}</span></td>
+      <td>${esc(e.description) || '<span class="text-soft">—</span>'}</td>
+      <td class="text-right" style="font-weight:600;">${e.hours.toFixed(2)}</td>
+      <td class="text-right">
+        <button class="delete-btn" onclick="openEditEntry(${i})" title="Edit">✎</button>
+        <button class="delete-btn" onclick="deleteEntry(${i})" title="Delete">✕</button>
+      </td>
+    </tr>
+  `).join('');
+
+  total.textContent = `Total: ${totalHours.toFixed(2)} hours (${filtered.length} entries)`;
+}
+
+function updateStats() {
+  const now = new Date();
+  const currentMonth = now.toISOString().slice(0, 7);
+  const monthHours = state.entries
+    .filter(e => e.date.startsWith(currentMonth))
+    .reduce((s, e) => s + e.hours, 0);
+
+  document.getElementById('stat-month-hours').textContent = monthHours.toFixed(1);
+  document.getElementById('stat-total-entries').textContent = state.entries.length;
+  document.getElementById('stat-clients').textContent = state.clients.length;
+}
+
+// ══════════════════════════════════════════════════════
+//  PDF REPORT
+// ══════════════════════════════════════════════════════
+
+// ── Roboto font cache ──
+let _robotoFonts = null;
+
+async function loadRobotoFonts() {
+  if (_robotoFonts) return _robotoFonts;
+
+  const urls = {
+    regular: 'https://fonts.gstatic.com/s/roboto/v47/KFOMCnqEu92Fr1ME7kSn66aGLdTylUAMQXC89YmC2DPNWubEbGmT.ttf',
+    bold:    'https://fonts.gstatic.com/s/roboto/v47/KFOMCnqEu92Fr1ME7kSn66aGLdTylUAMQXC89YmC2DPNWuaabWmT.ttf',
+  };
+
+  async function fetchAsBase64(url) {
+    const res = await fetch(url);
+    const buf = await res.arrayBuffer();
+    let binary = '';
+    const bytes = new Uint8Array(buf);
+    for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+    return btoa(binary);
+  }
+
+  const [regular, bold] = await Promise.all([
+    fetchAsBase64(urls.regular),
+    fetchAsBase64(urls.bold),
+  ]);
+
+  _robotoFonts = { regular, bold };
+  return _robotoFonts;
+}
+
+const REPORT_LABELS = {
+  pl: {
+    title: 'Raport czasu pracy',
+    client: 'Klient:',
+    period: 'Okres:',
+    totalHours: 'Łącznie godzin:',
+    date: 'Data',
+    description: 'Opis',
+    hours: 'Godziny',
+    total: 'Razem',
+    generated: 'Wygenerowano',
+    locale: 'pl-PL',
+  },
+  en: {
+    title: 'Time Report',
+    client: 'Client:',
+    period: 'Period:',
+    totalHours: 'Total hours:',
+    date: 'Date',
+    description: 'Description',
+    hours: 'Hours',
+    total: 'Total',
+    generated: 'Generated on',
+    locale: 'en-GB',
+  },
+};
+
+function openGenerateReport() {
+  // Default date range: current month
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  document.getElementById('report-from').value = `${y}-${m}-01`;
+  const lastDay = new Date(y, now.getMonth() + 1, 0).getDate();
+  document.getElementById('report-to').value = `${y}-${m}-${String(lastDay).padStart(2, '0')}`;
+  openModal('modal-report');
+}
+
+async function generateReport() {
+  const client = document.getElementById('report-client').value;
+  const from = document.getElementById('report-from').value;
+  const to = document.getElementById('report-to').value;
+  const author = document.getElementById('report-author').value.trim();
+  const lang = document.getElementById('report-lang').value;
+  const L = REPORT_LABELS[lang];
+
+  if (!client) { alert('Please select a client.'); return; }
+  if (!from || !to) { alert('Please select a date range.'); return; }
+
+  const entries = state.entries.filter(e =>
+    e.client === client && e.date >= from && e.date <= to
+  ).sort((a, b) => a.date.localeCompare(b.date));
+
+  if (entries.length === 0) {
+    alert('No entries found for this client and date range.');
+    return;
+  }
+
+  // Load Roboto font (cached after first call)
+  const fonts = await loadRobotoFonts();
+
+  const totalHours = entries.reduce((s, e) => s + e.hours, 0);
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+
+  // Register Roboto with jsPDF
+  doc.addFileToVFS('Roboto-Regular.ttf', fonts.regular);
+  doc.addFont('Roboto-Regular.ttf', 'Roboto', 'normal');
+  doc.addFileToVFS('Roboto-Bold.ttf', fonts.bold);
+  doc.addFont('Roboto-Bold.ttf', 'Roboto', 'bold');
+
+  // ── Header ──
+  doc.setFont('Roboto', 'bold');
+  doc.setFontSize(22);
+  doc.setTextColor(184, 101, 58); // accent color
+  doc.text(L.title, 20, 28);
+
+  doc.setFont('Roboto', 'normal');
+  doc.setFontSize(10);
+  doc.setTextColor(122, 111, 104);
+
+  if (author) {
+    doc.text(author, 20, 37);
+  }
+
+  // Client & period info
+  doc.setFontSize(11);
+  doc.setTextColor(44, 37, 32);
+  const infoY = author ? 48 : 42;
+  const labelX = 20;
+  const valueX = labelX + doc.getTextWidth(L.totalHours) + 3;
+
+  doc.setFont('Roboto', 'bold');
+  doc.text(L.client, labelX, infoY);
+  doc.setFont('Roboto', 'normal');
+  doc.text(client, valueX, infoY);
+
+  doc.setFont('Roboto', 'bold');
+  doc.text(L.period, labelX, infoY + 7);
+  doc.setFont('Roboto', 'normal');
+  doc.text(`${formatDate(from)} – ${formatDate(to)}`, valueX, infoY + 7);
+
+  doc.setFont('Roboto', 'bold');
+  doc.text(L.totalHours, labelX, infoY + 14);
+  doc.setFont('Roboto', 'normal');
+  doc.text(totalHours.toFixed(2), valueX, infoY + 14);
+
+  // ── Table ──
+  const tableData = entries.map(e => [
+    formatDate(e.date),
+    e.description || '—',
+    e.hours.toFixed(2),
+  ]);
+
+  // Add total row
+  tableData.push(['', L.total, totalHours.toFixed(2)]);
+
+  doc.autoTable({
+    startY: infoY + 24,
+    head: [[L.date, L.description, L.hours]],
+    body: tableData,
+    theme: 'grid',
+    styles: {
+      font: 'Roboto',
+      fontSize: 9.5,
+      cellPadding: 5,
+      lineColor: [232, 224, 216],
+      lineWidth: 0.5,
+    },
+    headStyles: {
+      fillColor: [184, 101, 58],
+      textColor: 255,
+      fontStyle: 'bold',
+      fontSize: 9.5,
+    },
+    bodyStyles: {
+      textColor: [44, 37, 32],
+    },
+    columnStyles: {
+      0: { cellWidth: 30 },
+      2: { cellWidth: 22, halign: 'right', fontStyle: 'bold' },
+    },
+    didParseCell: function(data) {
+      // Style total row
+      if (data.row.index === tableData.length - 1) {
+        data.cell.styles.fontStyle = 'bold';
+        data.cell.styles.fillColor = [250, 247, 242];
+      }
+    },
+    margin: { left: 20, right: 20 },
+  });
+
+  // ── Footer ──
+  const pageHeight = doc.internal.pageSize.height;
+  doc.setFont('Roboto', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(180, 170, 160);
+  doc.text(
+    `${L.generated} ${new Date().toLocaleDateString(L.locale)}`,
+    20, pageHeight - 15
+  );
+
+  // Save
+  const filename = `timesheet_${client.replace(/\s+/g, '_')}_${from}_${to}.pdf`;
+  doc.save(filename);
+  closeModal('modal-report');
+}
+
+// ══════════════════════════════════════════════════════
+//  UI HELPERS
+// ══════════════════════════════════════════════════════
+function openModal(id) {
+  document.getElementById(id).classList.add('active');
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove('active');
+}
+
+// Close modal on overlay click
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) overlay.classList.remove('active');
+  });
+});
+
+// Close modal on Escape
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    document.querySelectorAll('.modal-overlay.active').forEach(m => m.classList.remove('active'));
+  }
+});
+
+function formatDate(dateStr) {
+  if (!dateStr) return '';
+  const [y, m, d] = dateStr.split('-');
+  return `${d}.${m}.${y}`;
+}
+
+function esc(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+// ══════════════════════════════════════════════════════
+//  BOOT
+// ══════════════════════════════════════════════════════
+function waitForGoogleLibs() {
+  return new Promise((resolve) => {
+    const check = () => {
+      if (typeof google !== 'undefined' && google.accounts && google.accounts.oauth2) {
+        resolve();
+      } else {
+        setTimeout(check, 100);
+      }
+    };
+    check();
+  });
+}
+
+waitForGoogleLibs().then(() => {
+  initAuth();
+});
+</script>
+</body>
+</html>
